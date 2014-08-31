@@ -227,9 +227,9 @@
 
 (def specials
   "Set of special forms common to every clojure variant"
-  '#{do if new quote set! try
-     catch throw finally & def .
-     let* letfn* loop* recur fn*})
+  '#{clojure.core/do clojure.core/if clojure.core/new clojure.core/quote clojure.core/set! clojure.core/try
+     clojure.core/catch clojure.core/throw clojure.core/finally clojure.core/& clojure.core/def clojure.core/.
+     clojure.core/let* clojure.core/letfn* clojure.core/loop* clojure.core/recur clojure.core/fn* catch & finally})
 
 (defn macroexpand
   "Repeatedly calls macroexpand-1 on form until it no longer
@@ -284,7 +284,7 @@
         (-> (analyze-form mform env)
           (update-in [:raw-forms] (fnil conj ()) form)))))) ;; TODO: should passes propagate this?
 
-(defmethod -parse 'do
+(defmethod -parse 'clojure.core/do
   [[_ & exprs :as form] env]
   (let [statements-env (ctx env :ctx/statement)
         [statements ret] (loop [statements [] [e & exprs] exprs]
@@ -300,7 +300,7 @@
      :ret        ret
      :children   [:statements :ret]}))
 
-(defmethod -parse 'if
+(defmethod -parse 'clojure.core/if
   [[_ test then else :as form] env]
   (when-not (<= 3 (count form) 4)
     (throw (ex-info (str "Wrong number of args to if, had: " (dec (count form)))
@@ -317,7 +317,7 @@
      :else     else-expr
      :children [:test :then :else]}))
 
-(defmethod -parse 'new
+(defmethod -parse 'clojure.core/new
   [[_ class & args :as form] env]
   (when-not (>= (count form) 2)
     (throw (ex-info (str "Wrong number of args to new, had: " (dec (count form)))
@@ -332,7 +332,7 @@
      :args        args
      :children    [:class :args]}))
 
-(defmethod -parse 'quote
+(defmethod -parse 'clojure.core/quote
   [[_ expr :as form] env]
   (when-not (= 2 (count form))
     (throw (ex-info (str "Wrong number of args to quote, had: " (dec (count form)))
@@ -346,7 +346,7 @@
      :literal? true
      :children [:expr]}))
 
-(defmethod -parse 'set!
+(defmethod -parse 'clojure.core/set!
   [[_ target val :as form] env]
   (when-not (= 3 (count form))
     (throw (ex-info (str "Wrong number of args to set!, had: " (dec (count form)))
@@ -363,17 +363,17 @@
 
 (defn analyze-body [body env]
   ;; :body is used by emit-form to remove the artificial 'do
-  (assoc (parse (cons 'do body) env) :body? true))
+  (assoc (parse (cons 'clojure.core/do body) env) :body? true))
 
 (defn valid-binding-symbol? [s]
   (and (symbol? s)
        (not (namespace s))
        (not (contains? (set (name s)) \.))))
 
-(defmethod -parse 'try
+(defmethod -parse 'clojure.core/try
   [[_ & body :as form] env]
-  (let [catch? (every-pred seq? #(= (first %) 'catch))
-        finally? (every-pred seq? #(= (first %) 'finally))
+  (let [catch? (every-pred seq? #(or (= (first %) 'catch) (= (first %) 'clojure.core/catch)))
+        finally? (every-pred seq? #(or (= (first %) 'finally) (= (first %) 'clojure.core/finally)))
         [body tail'] (split-with (complement (some-fn catch? finally?)) body)
         [cblocks tail] (split-with catch? tail')
         [[fblock & fbs :as fblocks] tail] (split-with finally? tail)]
@@ -404,6 +404,27 @@
                  {:finally fblock})
                {:children `[:body :catches ~@(when fblock [:finally])]})))))
 
+(defmethod -parse 'clojure.core/catch
+  [[_ etype ename & body :as form] env]
+  (when-not (valid-binding-symbol? ename)
+    (throw (ex-info (str "Bad binding form: " ename)
+                    (merge {:sym ename
+                            :form form}
+                           (-source-info form env)))))
+  (let [local {:op    :binding
+               :env   env
+               :form  ename
+               :name  ename
+               :local :catch
+               :tag   etype}]
+    {:op          :catch
+     :class       (analyze-form etype (assoc env :locals {}))
+     :local       local
+     :env         env
+     :form        form
+     :body        (analyze-body body (assoc-in env [:locals ename] (dissoc-env local)))
+     :children    [:class :local :body]}))
+
 (defmethod -parse 'catch
   [[_ etype ename & body :as form] env]
   (when-not (valid-binding-symbol? ename)
@@ -425,7 +446,7 @@
      :body        (analyze-body body (assoc-in env [:locals ename] (dissoc-env local)))
      :children    [:class :local :body]}))
 
-(defmethod -parse 'throw
+(defmethod -parse 'clojure.core/throw
   [[_ throw :as form] env]
   (when-not (= 2 (count form))
     (throw (ex-info (str "Wrong number of args to throw, had: " (dec (count form)))
@@ -453,7 +474,7 @@
                             :bindings bindings}
                            (-source-info form env))))))
 
-(defmethod -parse 'letfn*
+(defmethod -parse 'clojure.core/letfn*
   [[_ bindings & body :as form] env]
   (validate-bindings form env)
   (let [bindings (apply hash-map bindings) ;; non-determinalistically pick only one local with the same name,
@@ -492,7 +513,7 @@
 (defn analyze-let
   [[op bindings & body :as form] {:keys [context loop-id] :as env}]
   (validate-bindings form env)
-  (let [loop? (= 'loop* op)]
+  (let [loop? (or (= 'loop* op) (= 'clojure.core/loop* op) (= 'clojure.core/iloop* op))]
     (loop [bindings bindings
            env (ctx env :ctx/expr)
            binds []]
@@ -522,14 +543,14 @@
            :bindings binds
            :children [:bindings :body]})))))
 
-(defmethod -parse 'let*
+(defmethod -parse 'clojure.core/let*
   [form env]
   (into {:op   :let
          :form form
          :env  env}
         (analyze-let form env)))
 
-(defmethod -parse 'loop*
+(defmethod -parse 'clojure.core/loop*
   [form env]
   (let [loop-id (gensym "loop_") ;; can be used to find matching recur
         env (dissoc (assoc env :loop-id loop-id) :no-recur)]
@@ -539,7 +560,17 @@
            :loop-id loop-id}
           (analyze-let form env))))
 
-(defmethod -parse 'recur
+(defmethod -parse 'clojure.core/iloop*
+  [form env]
+  (let [loop-id (gensym "loop_") ;; can be used to find matching recur
+        env (dissoc (assoc env :loop-id loop-id) :no-recur)]
+    (into {:op      :iloop
+           :form    form
+           :env     env
+           :loop-id loop-id}
+          (analyze-let form env))))
+
+(defmethod -parse 'clojure.core/recur
   [[_ & exprs :as form] {:keys [context loop-locals loop-id no-recur]
                          :as env}]
   (when-let [error-msg
@@ -580,8 +611,8 @@
                             :form   form}
                            (-source-info form env)
                            (-source-info params env)))))
-  (let [variadic? (boolean (some '#{&} params))
-        params-names (if variadic? (vec (remove '#{&} params)) params)
+  (let [variadic? (boolean (some '#{& clojure.core/&} params))
+        params-names (if variadic? (vec (remove '#{& clojure.core/&} params)) params)
         env (dissoc env :local)
         arity (count params-names)
         params-expr (mapv (fn [name id]
@@ -605,8 +636,8 @@
                         :loop-locals (count params-expr)})
         body (analyze-body body body-env)]
     (when variadic?
-      (let [x (drop-while #(not= % '&) params)]
-        (when (contains? #{nil '&} (second x))
+      (let [x (drop-while #(or (not= % '&) (not= % 'clojure.core/&)) params)]
+        (when (contains? #{nil '& 'clojure.core/&} (second x))
           (throw (ex-info "Invalid parameter list"
                           (merge {:params params
                                   :form   form}
@@ -632,7 +663,7 @@
      (when local
        {:local (dissoc-env local)}))))
 
-(defmethod -parse 'fn*
+(defmethod -parse 'clojure.core/fn*
   [[op & args :as form] env]
   (wrapping-meta
    (let [[n meths] (if (symbol? (first args))
@@ -679,7 +710,7 @@
               {:local name-expr})
             {:children `[~@(when n [:local]) :methods]}))))
 
-(defmethod -parse 'def
+(defmethod -parse 'clojure.core/def
   [[_ sym & expr :as form] {:keys [ns] :as env}]
   (when (not (symbol? sym))
     (throw (ex-info (str "First argument to def must be a symbol, had: " (class sym))
@@ -718,7 +749,7 @@
 
         meta (merge (meta sym)
                     (when arglists
-                      {:arglists (list 'quote arglists)}))
+                      {:arglists (list 'clojure.core/quote arglists)}))
 
         meta-expr (when meta (analyze-form meta (ctx env :ctx/expr))) ;; meta on def sym will be evaluated
 
@@ -738,7 +769,7 @@
            (when-not (empty? children)
              {:children children}))))
 
-(defmethod -parse '.
+(defmethod -parse 'clojure.core/.
   [[_ target & [m-or-f & args] :as form] env]
   (when-not (>= (count form) 3)
     (throw (ex-info (str "Wrong number of args to ., had: " (dec (count form)))

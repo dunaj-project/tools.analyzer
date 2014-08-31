@@ -42,7 +42,7 @@
 
 (defmethod -emit-form :host-call
   [{:keys [target method args]} opts]
-  (list '. (-emit-form* target opts)
+  (list 'clojure.core/. (-emit-form* target opts)
         (list* method (mapv #(-emit-form* % opts) args))))
 
 (defmethod -emit-form :host-field
@@ -52,7 +52,7 @@
 
 (defmethod -emit-form :host-interop
   [{:keys [target m-or-f]} opts]
-  (list '. (-emit-form* target opts) m-or-f))
+  (list 'clojure.core/. (-emit-form* target opts) m-or-f))
 
 (defmethod -emit-form :local
   [{:keys [name form]} opts]
@@ -73,17 +73,17 @@
 
 (defmethod -emit-form :letfn
   [{:keys [bindings body]} opts]
-  `(letfn* [~@(emit-bindings bindings opts)]
+  `(clojure.core/letfn* [~@(emit-bindings bindings opts)]
            ~(-emit-form* body opts)))
 
 (defmethod -emit-form :let
   [{:keys [bindings body]} opts]
-  `(let* [~@(emit-bindings bindings opts)]
+  `(clojure.core/let* [~@(emit-bindings bindings opts)]
            ~(-emit-form* body opts)))
 
 (defmethod -emit-form :loop
   [{:keys [bindings body]} opts]
-  `(loop* [~@(emit-bindings bindings opts)]
+  `(clojure.core/loop* [~@(emit-bindings bindings opts)]
            ~(-emit-form* body opts)))
 
 (defmethod -emit-form :const
@@ -92,7 +92,7 @@
 
 (defmethod -emit-form :quote
   [{:keys [expr]} opts]
-  (list 'quote (-emit-form* expr opts)))
+  (list 'clojure.core/quote (-emit-form* expr opts)))
 
 (defmethod -emit-form :vector
   [{:keys [items]} opts]
@@ -116,49 +116,49 @@
   [{:keys [ret statements body?]} opts]
   (if (and body? (empty? statements))
     (-emit-form* ret opts)
-    `(do ~@(mapv #(-emit-form* % opts) statements)
+    `(clojure.core/do ~@(mapv #(-emit-form* % opts) statements)
          ~(-emit-form* ret opts))))
 
 (defmethod -emit-form :if
   [{:keys [test then else]} opts]
-  `(if ~(-emit-form* test opts)
+  `(clojure.core/if ~(-emit-form* test opts)
      ~(-emit-form* then opts)
      ~@(when-not (nil? (:form else))
          [(-emit-form* else opts)])))
 
 (defmethod -emit-form :new
   [{:keys [class args]} opts]
-  `(new ~(-emit-form* class opts) ~@(mapv #(-emit-form* % opts) args)))
+  `(clojure.core/new ~(-emit-form* class opts) ~@(mapv #(-emit-form* % opts) args)))
 
 (defmethod -emit-form :set!
   [{:keys [target val]} opts]
-  `(set! ~(-emit-form* target opts) ~(-emit-form* val opts)))
+  `(clojure.core/set! ~(-emit-form* target opts) ~(-emit-form* val opts)))
 
 (defmethod -emit-form :recur
   [{:keys [exprs]} opts]
-  `(recur ~@(mapv #(-emit-form* % opts) exprs)))
+  `(clojure.core/recur ~@(mapv #(-emit-form* % opts) exprs)))
 
 (defmethod -emit-form :fn-method
   [{:keys [variadic? params body form]} opts]
   (let [params-form (mapv #(-emit-form* % opts) params)]
     `(~(with-meta
          (if variadic? (into (pop params-form)
-                             (conj '[&] (peek params-form)))
+                             (conj '[clojure.core/&] (peek params-form)))
              params-form)
          (meta (first form)))
       ~(-emit-form* body opts))))
 
 (defmethod -emit-form :fn
   [{:keys [local methods]} opts]
-  `(fn* ~@(when local [(-emit-form* local opts)])
+  `(clojure.core/fn* ~@(when local [(-emit-form* local opts)])
         ~@(mapv #(-emit-form* % opts) methods)))
 
 (defmethod -emit-form :def
   [{:keys [name doc init]} opts]
   (let [name (if-let [arglists (:arglists (meta name))]
-               (with-meta name (assoc (meta name) :arglists (list 'quote arglists)))
+               (with-meta name (assoc (meta name) :arglists (list 'clojure.core/quote arglists)))
                name)]
-    `(def ~name ~@(when doc [doc]) ~@(when init [(-emit-form* init opts)]))))
+    `(clojure.core/def ~name ~@(when doc [doc]) ~@(when init [(-emit-form* init opts)]))))
 
 (defmethod -emit-form :invoke
   [{:keys [fn args meta]} opts]
@@ -170,16 +170,18 @@
 
 (defmethod -emit-form :try
   [{:keys [body catches finally]} opts]
-  `(try ~(-emit-form* body opts)
+  `(clojure.core/try ~(-emit-form* body opts)
         ~@(mapv #(-emit-form* % opts) catches)
         ~@(when finally
+            ;; NOTE: kept unqualified
             [`(finally ~(-emit-form* finally opts))])))
 
 (defmethod -emit-form :catch
   [{:keys [class local body]} opts]
+  ;; NOTE: kept unqualified
   `(catch ~(-emit-form* class opts) ~(-emit-form* local opts)
      ~(-emit-form* body opts)))
 
 (defmethod -emit-form :throw
   [{:keys [exception]} opts]
-  `(throw ~(-emit-form* exception opts)))
+  `(clojure.core/throw ~(-emit-form* exception opts)))
