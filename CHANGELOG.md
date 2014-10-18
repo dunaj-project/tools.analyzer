@@ -1,5 +1,14 @@
 Changelog
 ========================================
+* Release 0.6.1 on 13 Oct 2014
+  * Significant performance enhancements
+  * Fixed scheduling of looping passes
+  * Uniquify :env :locals only if the :uniquify/uniquify-env pass-opt is true
+* Release 0.6.0 on 18 Sep 2014
+  * Added pass scheduler (clojure.tools.analyzer.passes/schedule) and configured all the passes
+  * Changed the interface of the collect-closed-overs pass
+  * Changed the interface of the add-binding-atom pass
+  * Removed the (experimental) trim pass
 * Release 0.5.3 on 31 Aug 2014
   * Made the source clojure-clr compatible
   * Added butlast+last to utils

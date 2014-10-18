@@ -10,11 +10,15 @@ Note that the analyzer in this library should not to be used directly as it lack
 Currently the following platform specific analyzers written on top of tools.analyzer exist: [tools.analyzer.jvm](https://github.com/clojure/tools.analyzer.jvm), [tools.analyzer.js](https://github.com/clojure/tools.analyzer.js)
 
 * [Example Usage](#example-usage)
-* [AST Quickref](#ast-quickref)
+* [Quickref](#quickref)
 * [Releases and Dependency Information](#releases-and-dependency-information)
 * [Changelog](#changelog)
+* [API Index](#api-index)
 * [Developer Information](#developer-information)
 * [License](#license)
+
+[Quickref](http://clojure.github.io/tools.analyzer/spec/quickref.html)
+========================================
 
 ## Example Usage
 `clojure.tools.analyzer/analyze` will not work out of the box, as it requires a number of entry-points to be set.
@@ -25,8 +29,8 @@ Attempting to call unbound fn: #'clojure.tools.analyzer/macroexpand-1
   [Thrown class java.lang.IllegalStateException]
 ```
 
-At the moment there exist two official analyzers written on top of `tools.analyzer`: `tools.analyzer.jvm` for clojure on the JVM and `tools.analyzer.js` for clojurescript.
-We will use `tools.analyzer.jvm` for those examples.
+At the moment there exist two official analyzers written on top of [tools.analyzer](https://github.com/clojure/tools.analyzer): [tools.analyzer.jvm](https://github.com/clojure/tools.analyzer.jvm) for clojure on the JVM and [tools.analyzer.js](https://github.com/clojure/tools.analyzer.js) for clojurescript.
+We will use [tools.analyzer.jvm](https://github.com/clojure/tools.analyzer.jvm) for those examples.
 
 Here's a simplified version of how `clojure.tools.analyzer.jvm/analyze` is defined:
 ```clojure
@@ -176,8 +180,7 @@ clojure.tools.analyzer.jvm> (ast/prewalk (analyze '(do 1 (+ 1 2) :foo))
 ```
 As you can see, this time all the nodes have been marked `:visited`.
 
-[AST Quickref](http://clojure.github.io/tools.analyzer/spec/quickref.html)
-========================================
+Since version `0.6.1`, passes can be scheduled automatically using `clojure.tools.analyzer.passes/schedule` rather than having to compose them and sort out pass dependencies manually, refer to its docstrings and examples from `tools.analyzer.jvm` for more info.
 
 ## SPONSORSHIP
 
@@ -196,7 +199,7 @@ YourKit is kindly supporting open source projects with its full-featured Java Pr
 Releases and Dependency Information
 ========================================
 
-Latest stable release: 0.5.3
+Latest stable release: 0.6.1
 
 * [All Released Versions](http://search.maven.org/#search%7Cgav%7C1%7Cg%3A%22org.clojure%22%20AND%20a%3A%22tools.analyzer%22)
 
@@ -205,7 +208,7 @@ Latest stable release: 0.5.3
 [Leiningen](https://github.com/technomancy/leiningen) dependency information:
 
 ```clojure
-[org.clojure/tools.analyzer "0.5.3"]
+[org.clojure/tools.analyzer "0.6.1"]
 ```
 [Maven](http://maven.apache.org/) dependency information:
 
@@ -213,19 +216,23 @@ Latest stable release: 0.5.3
 <dependency>
   <groupId>org.clojure</groupId>
   <artifactId>tools.analyzer</artifactId>
-  <version>0.5.3</version>
+  <version>0.6.1</version>
 </dependency>
 ```
 
 [Changelog](CHANGELOG.md)
 ========================================
 
+API Index
+========================================
+
+* [CrossClj Documentation](http://crossclj.info/doc/org.clojure/tools.analyzer/lastest/index.html)
+* [API index](http://clojure.github.io/tools.analyzer)
+
 Developer Information
 ========================================
 
 * [GitHub project](https://github.com/clojure/tools.analyzer)
-
-* [API index](http://clojure.github.io/tools.analyzer)
 
 * [Bug Tracker](http://dev.clojure.org/jira/browse/TANAL)
 
