@@ -1,4 +1,4 @@
-(defproject org.clojure/tools.analyzer "2.0.0-dunaj-SNAPSHOT"
+(defproject org.clojure/tools.analyzer "0.6.5-dunaj-SNAPSHOT"
   :description "An analyzer for Clojure code, written in Clojure and producing AST in EDN."
   :url "https://github.com/clojure/tools.analyzer"
   :license {:name "Eclipse Public License"
