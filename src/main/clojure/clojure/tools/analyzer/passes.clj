@@ -41,20 +41,23 @@
   (if (m k)
     m
     (reduce (fn [m dep]
-              (let [m (if (m dep)
-                        m
-                        (calc-deps m dep (get-in passes [dep :depends]) passes))])
-              (update-in m [k] into (conj (or (m dep) #{}) dep)))
+              (let [m (calc-deps m dep (get-in passes [dep :depends]) passes)]
+                (update-in m [k] into (conj (or (m dep) #{}) dep))))
             (assoc m k deps) deps)))
+
+(defn desugar-deps [passes]
+  (reduce-kv (fn [m name {:keys [after affects before]}]
+               (reduce (fn [m p] (update-in m [p :depends] (fnil conj #{}) name))
+                       (update-in m [name :depends] (fnil into #{}) (into affects (filter passes after)))
+                       before)) passes passes))
 
 (defn calculate-deps
   "Takes a map of pass-name -> pass-info and adds to each pass-info :dependencies and
    :dependants info, which also contain the transitive dependencies"
   [passes]
-  (let [dependencies (reduce-kv (fn [deps pname {:keys [depends after affects]}]
-                                  (calc-deps deps pname
-                                             (into depends (concat (filter passes (into after affects))
-                                                                   (mapv key (filter #(get (-> % val :before) pname) passes)))) passes))
+  (let [passes (desugar-deps passes)
+        dependencies (reduce-kv (fn [deps pname {:keys [depends]}]
+                                  (calc-deps deps pname depends passes))
                                 {} passes)
         dependants   (reduce-kv (fn [m k v] (reduce (fn [m v] (update-in m [v] (fnil conj #{}) k))
                                                    (update-in m [k] (fnil into #{}) nil) v))
@@ -94,20 +97,42 @@
          (recur (:walk cur) (conj group cur) rest)))
       [w group state])))
 
-;; TODO: start a looping pass only if all the looping passes are available
+(defn satisfies-affected? [{:keys [affects walk]} passes]
+  (loop [passes passes]
+    (let [free (vals (filter (comp empty? :dependants val) passes))]
+      (if-let [available-passes (seq (filter (comp #{walk :any} :walk) free))]
+        (recur (reduce remove-pass passes (mapv :name available-passes)))
+        (empty? (filter (fn [{:keys [name]}] ((set affects) name)) (vals passes)))))))
+
+(defn maybe-looping-pass [free passes]
+  (if-let [looping (seq (filter :affects free))]
+    (loop [[l & ls] looping]
+      (if l
+        (if (satisfies-affected? l (remove-pass passes (:name l)))
+          ;; all deps satisfied
+          l
+          (recur ls))
+        (if-let [p (first (remove :affects free))]
+          ;; pick a random avaliable non-looping pass
+          p
+          (throw (ex-info (str "looping pass doesn't encompass affected passes: " (:name l))
+                          {:pass l})))))
+    ;; pick a random available pass
+    (first free)))
+
 (defn schedule* [state passes]
   (let [f                         (filter (comp empty? :dependants val) passes)
         [free & frs :as free-all] (vals f)
-        w                         (first (group state))]
+        w                         (first (group state))
+        non-looping-free          (remove :affects free-all)]
     (if (seq passes)
-      (let [x (or (ffilter :compiler free-all)
-                  (and w (or (ffilter-walk #{w} free-all)
-                             (ffilter-walk #{:any} free-all)))
-                  (ffilter-walk #{:none} free-all)
-                  (ffilter :affects free-all)
-                  free)]
-        (recur (cons (assoc x :passes [(:name x)]) state)
-               (remove-pass passes (:name x))))
+      (let [{:keys [name] :as pass} (or (ffilter :compiler free-all)
+                                        (and w (or (ffilter-walk #{w} non-looping-free)
+                                                   (ffilter-walk #{:any} non-looping-free)))
+                                        (ffilter-walk #{:none} free-all)
+                                        (maybe-looping-pass free-all passes))]
+        (recur (cons (assoc pass :passes [name]) state)
+               (remove-pass passes name)))
       state)))
 
 (defn collapse [state]
@@ -116,11 +141,6 @@
       (if (= :none (:walk cur))
         (recur rest (conj ret cur))
         (let [[w g state] (group state)]
-          (when-let [affects (first (filter :affects g))]
-            (let [passes (set (mapv :name g))]
-              (when (not-every? passes (:affects affects))
-                (throw (ex-info (str "looping pass doesn't encompass affected passes: " (:name affects))
-                                {:pass affects})))))
           (recur state (conj ret {:walk (or w :pre) :passes (mapv :name g)}))))
       ret)))
 

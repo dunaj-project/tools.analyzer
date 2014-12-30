@@ -153,15 +153,15 @@
      (boolean (:protocol (or m (meta var)))))) ;; conveniently this is true in both clojure and clojurescript
 
 (defn resolve-ns
-  "Resolves the ns mapped by the given sym in the env"
+  "Resolves the ns mapped by the given sym in the global env"
   [ns-sym {:keys [ns]}]
   (when ns-sym
     (let [namespaces (:namespaces (env/deref-env))]
       (or (get-in namespaces [ns :aliases ns-sym])
           (:ns (namespaces ns-sym))))))
 
-(defn resolve-var
-  "Resolves the var mapped by the given sym in the env"
+(defn resolve-sym
+  "Resolves the value mapped by the given sym in the global env"
   [sym {:keys [ns] :as env}]
   (when (symbol? sym)
     (let [sym-ns (when-let [ns (namespace sym)]
@@ -199,6 +199,18 @@
   [m & mms]
   (persistent! (reduce conj! (transient (or m {})) mms)))
 
+(defn mapv'
+  "Like mapv, but short-circuits on reduced"
+  [f v]
+  (let [c (count v)]
+    (loop [ret (transient []) i 0]
+      (if (> c i)
+        (let [val (f (nth v i))]
+          (if (reduced? val)
+            (reduced (persistent! (reduce conj! (conj! ret @val) (subvec v (inc i)))))
+            (recur (conj! ret val) (inc i))))
+        (persistent! ret)))))
+
 (defn source-info
   "Returns the available source-info keys from a map"
   [m]
@@ -208,7 +220,8 @@
 (defn -source-info
   "Returns the source-info of x"
   [x env]
-  (merge' (source-info (meta x))
+  (merge' (source-info env)
+          (source-info (meta x))
           (when-let [file (and (not= *file* "NO_SOURCE_FILE")
                                *file*)]
             {:file file})))
