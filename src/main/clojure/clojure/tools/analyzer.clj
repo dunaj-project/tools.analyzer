@@ -219,7 +219,7 @@
   "Set of special forms common to every clojure variant"
   '#{clojure.core/do clojure.core/if clojure.core/new clojure.core/quote clojure.core/set! clojure.core/try clojure.core/var
      clojure.core/catch clojure.core/throw clojure.core/finally clojure.core/& clojure.core/def clojure.core/.
-     clojure.core/let* clojure.core/letfn* clojure.core/loop* clojure.core/recur clojure.core/fn* catch & finally})
+     clojure.core/let* clojure.core/letfn* clojure.core/loop* clojure.core/recur clojure.core/fn*})
 
 (defn macroexpand
   "Repeatedly calls macroexpand-1 on form until it no longer
@@ -816,40 +816,22 @@
   "Takes a form and an env map and dispatches on the head of the form, that is
    a special form."
   [form env]
-  ((if (qualified-specials?)
-     (case (first form)
-       clojure.core/do      parse-do
-       clojure.core/if      parse-if
-       clojure.core/new     parse-new
-       clojure.core/quote   parse-quote
-       clojure.core/set!    parse-set!
-       clojure.core/try     parse-try
-       clojure.core/throw   parse-throw
-       clojure.core/def     parse-def
-       clojure.core/.       parse-dot
-       clojure.core/let*    parse-let*
-       clojure.core/letfn*  parse-letfn*
-       clojure.core/loop*   parse-loop*
-       clojure.core/iloop*  parse-iloop*
-       clojure.core/recur   parse-recur
-       clojure.core/fn*     parse-fn*
-       clojure.core/var     parse-var
-       #_:else parse-invoke)
-     (case (first form)
-       do      parse-do
-       if      parse-if
-       new     parse-new
-       quote   parse-quote
-       set!    parse-set!
-       try     parse-try
-       throw   parse-throw
-       def     parse-def
-       .       parse-dot
-       let*    parse-let*
-       letfn*  parse-letfn*
-       loop*   parse-loop*
-       recur   parse-recur
-       fn*     parse-fn*
-       var     parse-var
-       #_:else parse-invoke))
+  ((case (first form)
+     clojure.core/do      parse-do
+     clojure.core/if      parse-if
+     clojure.core/new     parse-new
+     clojure.core/quote   parse-quote
+     clojure.core/set!    parse-set!
+     clojure.core/try     parse-try
+     clojure.core/throw   parse-throw
+     clojure.core/def     parse-def
+     clojure.core/.       parse-dot
+     clojure.core/let*    parse-let*
+     clojure.core/letfn*  parse-letfn*
+     clojure.core/loop*   parse-loop*
+     clojure.core/iloop*  parse-iloop*
+     clojure.core/recur   parse-recur
+     clojure.core/fn*     parse-fn*
+     clojure.core/var     parse-var
+     #_:else parse-invoke)
    form env))
