@@ -82,8 +82,8 @@
   [exp then & else]
   (if (try (eval exp)
            (catch Exception _ false))
-    `(do ~then)
-    `(do ~@else)))
+    `(clojure.core/do ~then)
+    `(clojure.core/do ~@else)))
 
 (defn regex?
   "Returns true if x is a regex"
@@ -178,7 +178,7 @@
         arglist (->> arglists (filter #(= argc (count %))) first)
         last-arglist (last arglists)]
     (or arglist
-        (when (and (some '#{&} last-arglist)
+        (when (and (some '#{& clojure.core/&} last-arglist)
                    (>= argc (- (count last-arglist) 2)))
           last-arglist))))
 

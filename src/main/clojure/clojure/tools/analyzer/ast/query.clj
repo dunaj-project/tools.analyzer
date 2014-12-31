@@ -42,7 +42,8 @@
                            (loop [args args to-ssa {} cur [f] binds rest ret []]
                              (if-let [[a & args] (seq args)]
                                (if (and (seq? a)
-                                        (not= 'quote (first a)))
+                                        (not= 'quote (first a))
+                                        (not= 'clojure.core/quote (first a)))
                                  (let [g (gensym "?")]
                                    (recur args (assoc to-ssa g a) (conj cur g) binds ret))
                                  (recur args to-ssa (conj cur a) binds ret))

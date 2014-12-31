@@ -22,22 +22,23 @@
 (defmacro with-env
   "Binds the global env to env, then executes the body"
   [env & body]
-  `(let [env# ~env
-         env# (cond
-               (map? env#) (atom env#)
-               (and (instance? clojure.lang.Atom env#)
-                    (map? @env#)) env#
-               :default (throw (ex-info (str "global env must be a map or atom containing a map, not "
-                                             (class env#))
-                                        {:env env#})))]
+  `(clojure.core/let [env# ~env
+                      env# (cond
+                            (map? env#) (atom env#)
+                            (and (instance? clojure.lang.Atom env#)
+                                 (map? @env#)) env#
+                                 :default (clojure.core/throw
+                                           (ex-info (str "global env must be a map or atom containing a map, not "
+                                                         (class env#))
+                                                    {:env env#})))]
      (binding [*env* env#] ~@body)))
 
 ;; if *env* is not bound, bind it to env
 (defmacro ensure
   "If *env* is not bound it binds it to env before executing the body"
   [env & body]
-  `(if *env*
-     (do ~@body)
+  `(clojure.core/if *env*
+     (clojure.core/do ~@body)
      (with-env ~env
        ~@body)))
 
