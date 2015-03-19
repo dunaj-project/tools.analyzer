@@ -1,4 +1,4 @@
-(defproject org.dunaj/tools.analyzer "0.6.6-dunaj_pre2"
+(defproject org.dunaj/tools.analyzer "0.6.6-dunaj_pre3"
   :description "An analyzer for Clojure code, written in Clojure and producing AST in EDN."
   :url "https://github.com/dunaj/tools.analyzer"
   :scm {:name "git" :url "https://github.com/dunaj-project/tools.analyzer"}
